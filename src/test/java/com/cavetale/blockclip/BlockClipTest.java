@@ -1,11 +1,16 @@
 package com.cavetale.blockclip;
 
 import com.google.gson.Gson;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import org.junit.Assert;
 import org.junit.Test;
+import org.yaml.snakeyaml.Yaml;
 
 public final class BlockClipTest {
     @Test
@@ -29,4 +34,22 @@ public final class BlockClipTest {
         System.out.println(json2);
         Assert.assertEquals(clip1, clip2);
     }
+
+    // @Test
+    // public void convert() {
+    //     Yaml yaml = new Yaml();
+    //     Gson gson = new Gson();
+    //     for (File file: new File("in").listFiles()) {
+    //         try (FileReader reader = new FileReader(file)) {
+    //             Map<String, Object> map = (Map<String, Object>)yaml.load(reader);
+    //             List<String> tags = (List<String>)map.remove("tags");
+    //             String json = gson.toJson(map);
+    //             BlockClip clip = BlockClip.deserialize(json);
+    //             clip.getMetadata().put("tags", tags);
+    //             clip.save(new File(new File("out"), file.getName().replace("yml", "json")));
+    //         } catch (IOException ioe) {
+    //             ioe.printStackTrace();
+    //         }
+    //     }
+    // }
 }

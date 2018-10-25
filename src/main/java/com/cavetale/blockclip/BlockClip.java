@@ -137,24 +137,17 @@ public final class BlockClip {
         return result;
     }
 
-    public static BlockClip load(File file) {
+    public static BlockClip load(File file) throws IOException {
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(file)) {
             return gson.fromJson(reader, BlockClip.class);
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-            return null;
         }
     }
 
-    public boolean save(File file) {
+    public void save(File file) throws IOException {
         Gson gson = new Gson();
         try (FileWriter writer = new FileWriter(file)) {
             gson.toJson(this, writer);
-            return true;
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-            return false;
         }
     }
 }

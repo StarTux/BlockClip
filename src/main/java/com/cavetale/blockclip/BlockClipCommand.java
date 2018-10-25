@@ -1,9 +1,12 @@
 package com.cavetale.blockclip;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
@@ -38,11 +41,22 @@ final class BlockClipCommand implements TabExecutor {
         if (args.length == 1) {
             return tabComplete(args[0], COMMANDS);
         }
+        if (args.length == 2 && args[0].equals("load")) {
+            try {
+                return tabComplete(args[1], Arrays.stream(plugin.getClipFolder().list()).filter(i -> i.endsWith(".json")).map(i -> i.substring(0, i.length() - 5)));
+            } catch (Exception e) {
+                return null;
+            }
+        }
         return null;
     }
 
     private List<String> tabComplete(String arg, List<String> ls) {
         return ls.stream().filter(i -> i.startsWith(arg)).collect(Collectors.toList());
+    }
+
+    private List<String> tabComplete(String arg, Stream<String> ls) {
+        return ls.filter(i -> i.startsWith(arg)).collect(Collectors.toList());
     }
 
     boolean onCommand(Player player, String cmd, String[] args) throws BlockClipException {
@@ -78,15 +92,27 @@ final class BlockClipCommand implements TabExecutor {
             if (args.length != 1) return false;
             BlockClip clip = clipOf(player);
             File file = parseFile(plugin.getClipFolder(), args[0]);
-            if (!clip.save(file)) throw new BlockClipException("Could not save clip to " + file + ". See console.");
+            try {
+                clip.save(file);
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+                throw new BlockClipException("Could not save clip to " + file + ". See console.");
+            }
             player.sendMessage("Clipboard saved to " + file + ".");
             return true;
         }
         case "load": {
             if (args.length != 1) return false;
             File file = parseFile(plugin.getClipFolder(), args[0]);
-            BlockClip clip = BlockClip.load(file);
-            if (clip == null) throw new BlockClipException("Could not load file: " + file + ". See console.");
+            BlockClip clip;
+            try {
+                clip = BlockClip.load(file);
+            } catch (FileNotFoundException ioe) {
+                throw new BlockClipException("File not found: " + file + ".");
+            } catch (Exception exception) {
+                exception.printStackTrace();
+                throw new BlockClipException("Could not load file: " + file + ". See console.");
+            }
             plugin.setClip(player, clip);
             player.sendMessage("File " + file + " loaded to clipboard.");
             return true;
@@ -99,7 +125,7 @@ final class BlockClipCommand implements TabExecutor {
             for (String name: plugin.getClipFolder().list()) {
                 if (!name.endsWith(".json")) continue;
                 if (pattern != null && !name.contains(pattern)) continue;
-                sb.append(" ").append(name.substring(name.length() - 4, name.length()));
+                sb.append(" ").append(name.substring(0, name.length() - 5));
                 count += 1;
             }
             player.sendMessage(count + " block clips:" + sb.toString());
@@ -128,7 +154,8 @@ final class BlockClipCommand implements TabExecutor {
     }
 
     File parseFile(File root, String arg) throws BlockClipException {
-        if (!arg.matches("[a-zA-Z0-9_-]+")) throw new BlockClipException("Invalid file name!");
+        if (arg.contains("..")) throw new BlockClipException("Invalid file name!");
+        if (!arg.matches("[.a-zA-Z0-9_-]+")) throw new BlockClipException("Invalid file name!");
         return new File(root, arg + ".json");
     }
 }
