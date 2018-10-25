@@ -1,0 +1,22 @@
+main: com.cavetale.blockclip.BlockClipPlugin
+name: BlockClip
+version: 0.1
+api-version: 1.13
+description: Simple Schematics Plugin
+author: StarTux
+website: https://cavetale.com
+commands:
+  blockclip:
+    aliases: [bclip]
+    description: BlockClip user interface
+    permission: blockclip.blockclip
+    usage: |-
+      /bclip copy - Copy to clipboard
+      /bclip paste - Paste clipboard
+      /bclip show - Preview clipboard
+      /blcip list [pattern] - List clip files
+      /bclip save <path> - Save to file
+      /bclip load <path> - Load file
+permissions:
+  blockclip.blockclip:
+    description: Use /blockclip
