@@ -47,12 +47,12 @@ public final class BlockClip {
         return gson.toJson(this);
     }
 
-    static BlockClip deserialize(String json) {
+    public static BlockClip deserialize(String json) {
         Gson gson = new Gson();
         return gson.fromJson(json, BlockClip.class);
     }
 
-    void paste(Block origin, BlockSetter setter) {
+    public void paste(Block origin, BlockSetter setter) {
         Iterator<Object> iter = this.blocks.iterator();
         for (int y = 0; y <= this.size.get(1); y += 1) {
             for (int z = 0; z <= this.size.get(2); z += 1) {
