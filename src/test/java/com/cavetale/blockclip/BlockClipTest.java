@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +46,22 @@ public final class BlockClipTest {
     //             List<String> tags = (List<String>)map.remove("tags");
     //             String json = gson.toJson(map);
     //             BlockClip clip = BlockClip.deserialize(json);
+    //             ArrayList<Object> blocks = new ArrayList<>();
+    //             for (String old: (List<String>)map.get("blocks")) {
+    //                 String[] ts = old.split(" ", 2);
+    //                 if (ts.length == 2) {
+    //                     blocks.add(Arrays.asList(ts[0], gson.fromJson(ts[1], Map.class)));
+    //                 } else {
+    //                     blocks.add(ts[0]);
+    //                 }
+    //             }
     //             clip.getMetadata().put("tags", tags);
+    //             clip.setBlocks(blocks);
     //             clip.save(new File(new File("out"), file.getName().replace("yml", "json")));
+    //             int sz = clip.size().x * clip.size().y * clip.size().z;
+    //             if (sz != blocks.size()) {
+    //                 System.out.println("Size=" + clip.size() + " Length=" + blocks.size() + "/" + sz + " | " + file.getName());
+    //             }
     //         } catch (IOException ioe) {
     //             ioe.printStackTrace();
     //         }

@@ -19,11 +19,15 @@ final class Selection {
         } catch (Exception e) {
             return null;
         }
-        return new Selection(new Vec3i(Math.min(ax, bx),
-                                       Math.min(ay, by),
-                                       Math.min(az, bz)),
-                             new Vec3i(Math.max(ax, bx),
-                                       Math.max(ay, by),
-                                       Math.max(az, bz)));
+        return new Selection(new Vec3i(ax, ay, az), new Vec3i(bx, by, bz));
+    }
+
+    Selection order() {
+        return new Selection(new Vec3i(Math.min(lo.x, hi.x),
+                                       Math.min(lo.y, hi.y),
+                                       Math.min(lo.z, hi.z)),
+                             new Vec3i(Math.max(lo.x, hi.x),
+                                       Math.max(lo.y, hi.y),
+                                       Math.max(lo.z, hi.z)));
     }
 }

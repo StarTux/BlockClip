@@ -30,4 +30,8 @@ public final class Vec3i {
     Vec3i add(Vec3i other) {
         return new Vec3i(this.x + other.x, this.y + other.y, this.z + other.z);
     }
+
+    int area() {
+        return x * y * z;
+    }
 }

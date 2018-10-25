@@ -54,9 +54,9 @@ public final class BlockClip {
 
     public void paste(Block origin, BlockSetter setter) {
         Iterator<Object> iter = this.blocks.iterator();
-        for (int y = 0; y <= this.size.get(1); y += 1) {
-            for (int z = 0; z <= this.size.get(2); z += 1) {
-                for (int x = 0; x <= this.size.get(0); x += 1) {
+        for (int y = 0; y < this.size.get(1); y += 1) {
+            for (int z = 0; z < this.size.get(2); z += 1) {
+                for (int x = 0; x < this.size.get(0); x += 1) {
                     if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
                     Object b = iter.next();
                     Block block = origin.getRelative(x, y, z);
@@ -100,9 +100,9 @@ public final class BlockClip {
 
     public void copy(Block origin) {
         List<Object> bs = new ArrayList<>();
-        for (int y = 0; y <= this.size.get(1); y += 1) {
-            for (int z = 0; z <= this.size.get(2); z += 1) {
-                for (int x = 0; x <= this.size.get(0); x += 1) {
+        for (int y = 0; y < this.size.get(1); y += 1) {
+            for (int z = 0; z < this.size.get(2); z += 1) {
+                for (int x = 0; x < this.size.get(0); x += 1) {
                     // Vec3i relativePosition = new Vec3i(x, y, z);
                     Block block = origin.getRelative(x, y, z);
                     BlockData blockData = block.getBlockData();
