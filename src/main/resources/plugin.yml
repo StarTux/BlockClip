@@ -5,6 +5,8 @@ api-version: 1.13
 description: Simple Schematics Plugin
 author: StarTux
 website: https://cavetale.com
+depend: [Dirty]
+softdepend: []
 commands:
   blockclip:
     aliases: [bclip]
