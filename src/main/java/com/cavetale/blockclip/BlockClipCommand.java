@@ -159,7 +159,7 @@ final class BlockClipCommand implements TabExecutor {
             return true;
         }
         case "meta": {
-            if (args.length != 1 && args.length != 2) return false;
+            if (args.length < 1) return false;
             BlockClip clip = clipOf(player);
             String key = args[0];
             if (args.length >= 2) {
