@@ -1,5 +1,7 @@
 package com.cavetale.blockclip;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -19,7 +21,7 @@ import org.bukkit.entity.Player;
 @RequiredArgsConstructor
 final class BlockClipCommand implements TabExecutor {
     private final BlockClipPlugin plugin;
-    private static final List<String> COMMANDS = Arrays.asList("copy", "paste", "show", "list", "save", "load");
+    private static final List<String> COMMANDS = Arrays.asList("copy", "paste", "show", "list", "save", "load", "meta", "info");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
@@ -156,6 +158,27 @@ final class BlockClipCommand implements TabExecutor {
             player.sendMessage(count + " block clips:" + sb.toString());
             return true;
         }
+        case "meta": {
+            if (args.length != 1 && args.length != 2) return false;
+            BlockClip clip = clipOf(player);
+            String key = args[0];
+            if (args.length >= 2) {
+                Object value = jsonOf(Arrays.copyOfRange(args, 1, args.length));
+                clip.getMetadata().put(key, value);
+                player.sendMessage("Set clipboard meta \"" + key + "\" to " + new Gson().toJson(value) + ".");
+            } else {
+                if (null == clip.getMetadata().remove(key)) throw new BlockClipException("Clipboard did not set meta \"" + key + "\"!");
+                player.sendMessage("Removed clipboard meta \"" + key + "\".");
+            }
+            return true;
+        }
+        case "info": {
+            if (args.length != 0) return false;
+            BlockClip clip = clipOf(player);
+            Gson gson = new Gson();
+            player.sendMessage("Clipboard size=" + clip.size() + ", " + clip.size().area() + " blocks, meta=" + gson.toJson(clip.getMetadata()));
+            return true;
+        }
         default: return false;
         }
     }
@@ -182,5 +205,17 @@ final class BlockClipCommand implements TabExecutor {
         if (arg.contains("..")) throw new BlockClipException("Invalid file name!");
         if (!arg.matches("[.a-zA-Z0-9_-]+")) throw new BlockClipException("Invalid file name!");
         return new File(root, arg + ".json");
+    }
+
+    Object jsonOf(String[] args) throws BlockClipException {
+        StringBuilder sb = new StringBuilder(args[0]);
+        for (int i = 1; i < args.length; i += 1) {
+            sb.append(" ").append(args[i]);
+        }
+        try {
+            return new Gson().fromJson(sb.toString(), Object.class);
+        } catch (JsonSyntaxException mje) {
+            throw new BlockClipException("Malformed json: " + sb.toString() + "!");
+        }
     }
 }

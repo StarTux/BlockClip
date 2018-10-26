@@ -17,6 +17,8 @@ commands:
       /blcip list [pattern] - List clip files
       /bclip save <path> - Save to file
       /bclip load <path> - Load file
+      /bclip meta <key> <value> - Set clipboard meta
+      /bclip info - Clipboard info
 permissions:
   blockclip.blockclip:
     description: Use /blockclip
