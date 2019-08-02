@@ -52,6 +52,12 @@ public final class BlockClip {
         return gson.fromJson(json, BlockClip.class);
     }
 
+    BlockData parseBlockData(String in) {
+        in = in.replaceAll("^minecraft:sign", "minecraft:oak_sign");
+        in = in.replaceAll("^minecraft:wall_sign", "minecraft:oak_wall_sign");
+        return Bukkit.getServer().createBlockData(in);
+    }
+
     public void paste(Block origin, BlockSetter setter) {
         Iterator<Object> iter = this.blocks.iterator();
         for (int y = 0; y < this.size.get(1); y += 1) {
@@ -64,13 +70,13 @@ public final class BlockClip {
                     Map<String, Object> blockTag = null;
                     Vec3i relativePosition = new Vec3i(x, y, z);
                     if (b instanceof String) {
-                        blockData = Bukkit.getServer().createBlockData((String)b);
+                        blockData = parseBlockData((String) b);
                     } else if (b instanceof List) {
                         List<Object> list = (List<Object>)b;
                         if (list.size() != 2 || !(list.get(0) instanceof String) || !(list.get(1) instanceof Map)) {
                             throw new IllegalArgumentException("Invalid list entry at " + relativePosition + ": " + list);
                         }
-                        blockData = Bukkit.getServer().createBlockData((String)list.get(0));
+                        blockData = parseBlockData((String)list.get(0));
                         blockTag = (Map<String, Object>)list.get(1);
                         blockTag.put("x", block.getX());
                         blockTag.put("y", block.getY());
