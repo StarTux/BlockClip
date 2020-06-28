@@ -10,9 +10,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class BlockClipPlugin extends JavaPlugin {
     private static final String METADATA_CLIP = "blockclip.clip";
     private BlockClipCommand blockClipCommand;
+    static BlockClipPlugin instance;
 
     @Override
     public void onEnable() {
+        instance = this;
         this.blockClipCommand = new BlockClipCommand(this);
         getCommand("blockclip").setExecutor(blockClipCommand);
     }

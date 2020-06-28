@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import lombok.Data;
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
@@ -55,7 +56,18 @@ public final class BlockClip {
     BlockData parseBlockData(String in) {
         in = in.replaceAll("^minecraft:sign", "minecraft:oak_sign");
         in = in.replaceAll("^minecraft:wall_sign", "minecraft:oak_wall_sign");
-        return Bukkit.getServer().createBlockData(in);
+        try {
+            return Bukkit.getServer().createBlockData(in);
+        } catch (IllegalArgumentException iae) {
+            BlockClipPlugin.instance.getLogger().log(Level.SEVERE, in, in);
+            in = in.split("\\[")[0];
+        }
+        try {
+            return Bukkit.getServer().createBlockData(in);
+        } catch (IllegalArgumentException iae) {
+            BlockClipPlugin.instance.getLogger().log(Level.SEVERE, in, in);
+        }
+        return null;
     }
 
     public void paste(Block origin, BlockSetter setter) {
@@ -84,6 +96,7 @@ public final class BlockClip {
                     } else {
                         throw new IllegalArgumentException("Unknown block entry at " + relativePosition + ": " + b.getClass().getName());
                     }
+                    if (blockData == null) continue;
                     if (setter == null || setter.accept(block, relativePosition, blockData, blockTag)) {
                         block.setBlockData(blockData, false);
                         if (blockTag != null) Dirty.setBlockTag(block, blockTag);
