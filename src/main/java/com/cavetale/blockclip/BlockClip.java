@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import lombok.Data;
+import lombok.Value;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -29,17 +30,26 @@ public final class BlockClip {
     private List<Object> blocks = new ArrayList<>();
     private Map<String, Object> metadata = new HashMap<>();
     private Origin origin;
+    private String filename;
+    private transient List<ParsedBlock> parsedCache = null;
 
     @FunctionalInterface
     public interface BlockSetter {
         boolean accept(Block block, Vec3i vec, BlockData blockData, Map<String, Object> blockTag);
     }
 
+    @Value
+    public static final class ParsedBlock {
+        BlockData blockData;
+        Map<String, Object> blockTag;
+    }
+
+    @Value
     public static final class Origin {
-        String world;
-        int x;
-        int y;
-        int z;
+        public final String world;
+        public final int x;
+        public final int y;
+        public final int z;
 
         public Origin(final Block block) {
             this.world = block.getWorld().getName();
@@ -56,11 +66,11 @@ public final class BlockClip {
     }
 
     public void setSize(int x, int y, int z) {
-        this.size = Arrays.asList(x, y, z);
+        size = Arrays.asList(x, y, z);
     }
 
     public Vec3i size() {
-        return new Vec3i(this.size.get(0), this.size.get(1), this.size.get(2));
+        return new Vec3i(size.get(0), size.get(1), size.get(2));
     }
 
     public String serialize() {
@@ -75,7 +85,7 @@ public final class BlockClip {
         return GSON.fromJson(json, BlockClip.class);
     }
 
-    BlockData parseBlockData(String in) {
+    private static BlockData parseBlockData(String in) {
         in = in.replace("minecraft:sign", "minecraft:oak_sign");
         in = in.replace("minecraft:wall_sign", "minecraft:oak_wall_sign");
         if (in.startsWith("minecraft:") && in.contains("_wall[")) {
@@ -103,40 +113,38 @@ public final class BlockClip {
         return null;
     }
 
+    private static String serializeBlockData(BlockData in) {
+        if (in == null) return "air";
+        String string = in.getAsString();
+        if (string.startsWith("minecraft:")) string = string.substring(10);
+        return string;
+    }
+
     public void paste(Block offset, BlockSetter setter) {
-        Iterator<Object> iter = this.blocks.iterator();
-        for (int y = 0; y < this.size.get(1); y += 1) {
-            for (int z = 0; z < this.size.get(2); z += 1) {
-                for (int x = 0; x < this.size.get(0); x += 1) {
+        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        for (int y = 0; y < size.get(1); y += 1) {
+            for (int z = 0; z < size.get(2); z += 1) {
+                for (int x = 0; x < size.get(0); x += 1) {
                     if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
-                    Object b = iter.next();
+                    ParsedBlock it = iter.next();
+                    if (it.blockData == null) continue;
                     Block block = offset.getRelative(x, y, z);
-                    final BlockData blockData;
-                    final Map<String, Object> blockTag;
-                    Vec3i relativePosition = new Vec3i(x, y, z);
-                    if (b instanceof String) {
-                        blockData = parseBlockData((String) b);
-                        blockTag = null;
-                    } else if (b instanceof List) {
-                        @SuppressWarnings("unchecked")
-                        List<Object> list = (List<Object>) b;
-                        if (list.size() != 2 || !(list.get(0) instanceof String) || !(list.get(1) instanceof Map)) {
-                            throw new IllegalArgumentException("Invalid list entry at " + relativePosition + ": " + list);
-                        }
-                        blockData = parseBlockData((String) list.get(0));
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> map = (Map<String, Object>) list.get(1);
-                        blockTag = map;
+                    Vec3i relative = new Vec3i(x, y, z);
+                    BlockData blockData = it.blockData.clone();
+                    Map<String, Object> blockTag = it.blockTag; // careful: not a copy!
+                    if (blockTag != null) {
                         blockTag.put("x", block.getX());
                         blockTag.put("y", block.getY());
                         blockTag.put("z", block.getZ());
-                    } else {
-                        throw new IllegalArgumentException("Unknown block entry at " + relativePosition + ": " + b.getClass().getName());
                     }
-                    if (blockData == null) continue;
-                    if (setter == null || setter.accept(block, relativePosition, blockData, blockTag)) {
+                    if (setter == null || setter.accept(block, relative, blockData, blockTag)) {
                         block.setBlockData(blockData, false);
                         if (blockTag != null) Dirty.setBlockTag(block, blockTag);
+                    }
+                    if (blockTag != null) {
+                        blockTag.remove("x");
+                        blockTag.remove("y");
+                        blockTag.remove("z");
                     }
                 }
             }
@@ -156,25 +164,26 @@ public final class BlockClip {
 
     public void copy(Block offset) {
         List<Object> bs = new ArrayList<>();
-        for (int y = 0; y < this.size.get(1); y += 1) {
-            for (int z = 0; z < this.size.get(2); z += 1) {
-                for (int x = 0; x < this.size.get(0); x += 1) {
+        for (int y = 0; y < size.get(1); y += 1) {
+            for (int z = 0; z < size.get(2); z += 1) {
+                for (int x = 0; x < size.get(0); x += 1) {
                     // Vec3i relativePosition = new Vec3i(x, y, z);
                     Block block = offset.getRelative(x, y, z);
                     BlockData blockData = block.getBlockData();
                     Map<String, Object> blockTag = Dirty.getBlockTag(block);
                     if (blockTag == null) {
-                        bs.add(blockData.getAsString());
+                        bs.add(serializeBlockData(blockData));
                     } else {
                         blockTag.remove("x");
                         blockTag.remove("y");
                         blockTag.remove("z");
-                        bs.add(Arrays.asList(blockData.getAsString(), blockTag));
+                        bs.add(Arrays.asList(serializeBlockData(blockData), blockTag));
                     }
                 }
             }
         }
-        this.blocks = bs;
+        blocks = bs;
+        parsedCache = null;
     }
 
     public static BlockClip copyOf(Block ba, Block bb) {
@@ -195,14 +204,139 @@ public final class BlockClip {
     }
 
     public static BlockClip load(File file) throws IOException {
+        BlockClip result;
         try (FileReader reader = new FileReader(file)) {
-            return GSON.fromJson(reader, BlockClip.class);
+            result = GSON.fromJson(reader, BlockClip.class);
         }
+        if (result != null) {
+            result.filename = file.getName();
+        }
+        return result;
     }
 
     public void save(File file) throws IOException {
+        filename = file.getName();
         try (FileWriter writer = new FileWriter(file)) {
             GSON.toJson(this, writer);
+        }
+    }
+
+    private List<ParsedBlock> computeParsedCache() {
+        List<ParsedBlock> result = new ArrayList<>(blocks.size());
+        Iterator<Object> iter = blocks.iterator();
+        for (int y = 0; y < size.get(1); y += 1) {
+            for (int z = 0; z < size.get(2); z += 1) {
+                for (int x = 0; x < size.get(0); x += 1) {
+                    if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
+                    Object b = iter.next();
+                    final BlockData blockData;
+                    final Map<String, Object> blockTag;
+                    Vec3i relativePosition = new Vec3i(x, y, z);
+                    if (b instanceof String) {
+                        blockData = parseBlockData((String) b);
+                        blockTag = null;
+                    } else if (b instanceof List) {
+                        @SuppressWarnings("unchecked")
+                            List<Object> list = (List<Object>) b;
+                        if (list.size() != 2 || !(list.get(0) instanceof String) || !(list.get(1) instanceof Map)) {
+                            throw new IllegalArgumentException("Invalid list entry at " + relativePosition + ": " + list);
+                        }
+                        blockData = parseBlockData((String) list.get(0));
+                        @SuppressWarnings("unchecked")
+                            Map<String, Object> map = (Map<String, Object>) list.get(1);
+                        blockTag = map;
+                    } else {
+                        throw new IllegalArgumentException("Unknown block entry at " + relativePosition + ": " + b.getClass().getName());
+                    }
+                    result.add(new ParsedBlock(blockData, blockTag));
+                }
+            }
+        }
+        return result;
+    }
+
+    public List<ParsedBlock> getParsedCache() {
+        if (parsedCache == null) {
+            parsedCache = computeParsedCache();
+        }
+        return parsedCache;
+    }
+
+    public boolean isOrigin(Block offset) {
+        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        for (int y = 0; y < size.get(1); y += 1) {
+            for (int z = 0; z < size.get(2); z += 1) {
+                for (int x = 0; x < size.get(0); x += 1) {
+                    if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
+                    ParsedBlock it = iter.next();
+                    Block block = offset.getRelative(x, y, z);
+                    if (it.blockData == null) {
+                        if (!block.isEmpty()) return false;
+                    } else {
+                        if (it.blockData.getMaterial() != block.getType()) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public double originAccuracy(Block offset) {
+        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        int hits = 0;
+        int count = 0;
+        for (int y = 0; y < size.get(1); y += 1) {
+            for (int z = 0; z < size.get(2); z += 1) {
+                for (int x = 0; x < size.get(0); x += 1) {
+                    count += 1;
+                    if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
+                    ParsedBlock it = iter.next();
+                    Block block = offset.getRelative(x, y, z);
+                    if (it.blockData == null) {
+                        if (block.isEmpty()) hits += 1;
+                    } else {
+                        if (it.blockData.getMaterial() == block.getType()) {
+                            hits += 1;
+                        }
+                    }
+                }
+            }
+        }
+        return (double) hits / (double) count;
+    }
+
+    public void printDifferences(Block offset, Player player) {
+        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        for (int y = 0; y < size.get(1); y += 1) {
+            for (int z = 0; z < size.get(2); z += 1) {
+                for (int x = 0; x < size.get(0); x += 1) {
+                    if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
+                    ParsedBlock it = iter.next();
+                    Block block = offset.getRelative(x, y, z);
+                    if (it.blockData == null) {
+                        if (!block.isEmpty()) {
+                            player.sendMessage(Vec3i.of(block) + ": AIR vs " + block.getType());
+                        }
+                    } else {
+                        if (it.blockData.getMaterial() != block.getType()) {
+                            player.sendMessage(Vec3i.of(block) + ": " + it.blockData.getMaterial() + " vs " + block.getType());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void update() {
+        List<ParsedBlock> parsed = getParsedCache();
+        if (parsed.size() != blocks.size()) throw new IllegalStateException("Size does not match block array length!");
+        for (int i = 0; i < parsed.size(); i += 1) {
+            ParsedBlock it = parsed.get(i);
+            blocks.set(i, it.blockTag == null
+                       ? serializeBlockData(it.blockData)
+                       : Arrays.asList(serializeBlockData(it.blockData), it.blockTag));
         }
     }
 }

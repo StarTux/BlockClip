@@ -5,7 +5,9 @@ import com.google.gson.JsonSyntaxException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -13,15 +15,17 @@ import lombok.RequiredArgsConstructor;
 import org.bukkit.ChatColor;
 import org.bukkit.Particle;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 @RequiredArgsConstructor
 final class BlockClipCommand implements TabExecutor {
     private final BlockClipPlugin plugin;
-    private static final List<String> COMMANDS = Arrays.asList("copy", "paste", "show", "list", "save", "load", "meta", "info");
+    private static final List<String> COMMANDS = Arrays.asList("copy", "paste", "show", "list", "save", "load", "meta", "info", "findorigins");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
@@ -73,7 +77,7 @@ final class BlockClipCommand implements TabExecutor {
         switch (cmd) {
         case "copy": {
             if (args.length != 0) return false;
-            Selection selection = selectionOf(player).order();
+            Selection selection = selectionOf(player);
             World world = player.getWorld();
             BlockClip clip = BlockClip.copyOf(selection.lo.toBlock(world), selection.hi.toBlock(world));
             plugin.setClip(player, clip);
@@ -185,6 +189,7 @@ final class BlockClipCommand implements TabExecutor {
             player.sendMessage("Clipboard size=" + clip.size() + ", " + clip.size().area() + " blocks, meta=" + gson.toJson(clip.getMetadata()));
             return true;
         }
+        case "findorigins": return findOrigins(player, args);
         default: return false;
         }
     }
@@ -223,5 +228,105 @@ final class BlockClipCommand implements TabExecutor {
         } catch (JsonSyntaxException mje) {
             throw new BlockClipException("Malformed json: " + sb.toString() + "!");
         }
+    }
+
+    enum Action {
+        REPORT, DETAILS, SAVE;
+    }
+
+    boolean findOrigins(Player player, String[] args) throws BlockClipException {
+        if (args.length > 2) return false;
+        final double threshold;
+        if (args.length >= 1) {
+            threshold = Double.parseDouble(args[0]);
+        } else {
+            threshold = -1;
+        }
+        final Action action;
+        if (args.length >= 2) {
+            action = Action.valueOf(args[1].toUpperCase());
+        } else {
+            action = Action.REPORT;
+        }
+        final Selection selection = selectionOf(player);
+        final Iterator<Vec3i> vecIter = selection.iterator();
+        final World world = player.getWorld();
+        List<BlockClip> clips = new ArrayList<>();
+        for (File file : plugin.getClipFolder().listFiles()) {
+            if (file.isFile() && file.getName().endsWith(".json")) {
+                BlockClip clip;
+                try {
+                    clip = BlockClip.load(file);
+                } catch (IOException ioe) {
+                    ioe.printStackTrace();
+                    player.sendMessage("Error! See console");
+                    return true;
+                }
+                if (clip.getOrigin() == null) {
+                    clips.add(clip);
+                }
+            }
+        }
+        new BukkitRunnable() {
+            int count = 0;
+            @Override public void run() {
+                if (!player.isValid() || !player.getWorld().equals(world)) {
+                    cancel();
+                    return;
+                }
+                long now = System.currentTimeMillis();
+                do {
+                    if (!vecIter.hasNext() || clips.isEmpty()) {
+                        player.sendMessage("[BlockClip] findOrigins done: " + count + "/" + selection.volume() + " blocks searched!");
+                        player.sendMessage(clips.size() + " origins not found!");
+                        cancel();
+                        return;
+                    }
+                    Vec3i vec = vecIter.next();
+                    count += 1;
+                    Block block = vec.toBlock(world);
+                    BlockClip foundClip = null;
+                    for (BlockClip clip : clips) {
+                        if (threshold > 0) {
+                            double accuracy = clip.originAccuracy(block);
+                            if (accuracy >= threshold) {
+                                if (action == Action.SAVE) {
+                                    foundClip = clip;
+                                    break;
+                                } else {
+                                    String n = String.format("%.02f%%", accuracy * 100.0);
+                                    player.sendMessage("[BlockClip] High accuracy: " + n + " " + clip.getFilename() + " at " + vec);
+                                    if (action == Action.DETAILS) {
+                                        clip.printDifferences(block, player);
+                                    }
+                                }
+                            }
+                        } else {
+                            if (clip.isOrigin(block)) {
+                                foundClip = clip;
+                                break;
+                            }
+                        }
+                    }
+                    if (foundClip != null) {
+                        foundClip.setOrigin(new BlockClip.Origin(block));
+                        player.sendMessage("Origin found: " + foundClip.getFilename() + ": " + foundClip.getOrigin());
+                        foundClip.update();
+                        try {
+                            foundClip.save(new File(plugin.getClipFolder(), foundClip.getFilename()));
+                        } catch (IOException ioe) {
+                            ioe.printStackTrace();
+                            player.sendMessage("[BlockClip] Error! See console");
+                            cancel();
+                            return;
+                        }
+                        clips.remove(foundClip);
+                        return;
+                    }
+                } while (System.currentTimeMillis() - now < 50L);
+            }
+        }.runTaskTimer(plugin, 0L, 1L);
+        player.sendMessage("Searching origins of " + clips.size() + " clips within " + selection + "...");
+        return true;
     }
 }
