@@ -86,19 +86,6 @@ public final class BlockClip {
     }
 
     private static BlockData parseBlockData(String in) {
-        in = in.replace("minecraft:sign", "minecraft:oak_sign");
-        in = in.replace("minecraft:wall_sign", "minecraft:oak_wall_sign");
-        if (in.startsWith("minecraft:") && in.contains("_wall[")) {
-            in = in
-                .replace("north=true", "north=low")
-                .replace("east=true", "east=low")
-                .replace("south=true", "south=low")
-                .replace("west=true", "west=low")
-                .replace("north=false", "north=none")
-                .replace("east=false", "east=none")
-                .replace("south=false", "south=none")
-                .replace("west=false", "west=none");
-        }
         try {
             return Bukkit.getServer().createBlockData(in);
         } catch (IllegalArgumentException iae) {
