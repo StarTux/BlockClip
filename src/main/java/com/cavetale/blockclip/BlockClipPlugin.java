@@ -43,7 +43,7 @@ public final class BlockClipPlugin extends JavaPlugin {
     BlockClip getClip(Metadatable player) {
         for (MetadataValue mv: player.getMetadata(METADATA_CLIP)) {
             if (mv.getOwningPlugin() == this) {
-                return (BlockClip)mv.value();
+                return (BlockClip) mv.value();
             }
         }
         return null;

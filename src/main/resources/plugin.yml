@@ -6,7 +6,7 @@ description: Simple Schematics Plugin
 author: StarTux
 website: https://cavetale.com
 depend: [Dirty]
-softdepend: []
+softdepend: [WorldEdit]
 commands:
   blockclip:
     aliases: [bclip]

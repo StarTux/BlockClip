@@ -25,7 +25,7 @@ final class BlockClipCommand implements TabExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-        Player player = sender instanceof Player ? (Player)sender : null;
+        Player player = sender instanceof Player ? (Player) sender : null;
         if (args.length == 0) return false;
         if (player == null) {
             plugin.getLogger().info("Player expected");
@@ -46,7 +46,9 @@ final class BlockClipCommand implements TabExecutor {
         }
         if (args.length == 2 && args[0].equals("load")) {
             try {
-                return tabComplete(args[1], Arrays.stream(plugin.getClipFolder().list()).filter(i -> i.endsWith(".json")).map(i -> i.substring(0, i.length() - 5)));
+                return tabComplete(args[1], Arrays.stream(plugin.getClipFolder().list())
+                                   .filter(i -> i.endsWith(".json"))
+                                   .map(i -> i.substring(0, i.length() - 5)));
             } catch (Exception e) {
                 return null;
             }
@@ -64,7 +66,7 @@ final class BlockClipCommand implements TabExecutor {
 
     void particle(Player player, int x, int y, int z) {
         final Particle p = Particle.END_ROD;
-        player.spawnParticle(p, (double)x, (double)y, (double)z, 1, 0.0, 0.0, 0.0, 0.0);
+        player.spawnParticle(p, (double) x, (double) y, (double) z, 1, 0.0, 0.0, 0.0, 0.0);
     }
 
     boolean onCommand(Player player, String cmd, String[] args) throws BlockClipException {
@@ -94,7 +96,11 @@ final class BlockClipCommand implements TabExecutor {
                 particle(player, selection.hi.x + 1, selection.lo.y + 0, z);
                 particle(player, selection.hi.x + 1, selection.hi.y + 1, z);
             }
-            player.spawnParticle(Particle.BARRIER, (double)selection.lo.x + 0.5, (double)selection.lo.y + 0.5, (double)selection.lo.z + 0.5, 1, 0.0, 0.0, 0.0, 0.0);
+            player.spawnParticle(Particle.BARRIER,
+                                 (double) selection.lo.x + 0.5,
+                                 (double) selection.lo.y + 0.5,
+                                 (double) selection.lo.z + 0.5, 1,
+                                 0.0, 0.0, 0.0, 0.0);
             return true;
         }
         case "paste": {
@@ -184,7 +190,7 @@ final class BlockClipCommand implements TabExecutor {
     }
 
     static final class BlockClipException extends Exception {
-        BlockClipException(String message) {
+        BlockClipException(final String message) {
             super(message);
         }
     }

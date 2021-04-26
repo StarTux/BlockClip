@@ -8,7 +8,9 @@ import org.bukkit.block.Block;
 public final class Vec3i {
     public static final Vec3i ZERO = new Vec3i(0, 0, 0);
     public static final Vec3i ONE = new Vec3i(1, 1, 1);
-    public final int x, y, z;
+    public final int x;
+    public final int y;
+    public final int z;
 
     @Override
     public String toString() {
