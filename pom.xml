@@ -69,11 +69,11 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>1.18.16</version>
+      <version>1.18.20</version>
       <scope>provided</scope>
     </dependency>
 
-    <!-- Lombok -->
+    <!-- Dirty -->
     <dependency>
       <groupId>com.cavetale.dirty</groupId>
       <artifactId>dirty</artifactId>
