@@ -17,6 +17,7 @@ import java.util.logging.Level;
 import lombok.Data;
 import lombok.Value;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
@@ -86,6 +87,7 @@ public final class BlockClip {
     }
 
     private static BlockData parseBlockData(String in) {
+        if (in.equals("grass_path")) return Material.DIRT_PATH.createBlockData();
         try {
             return Bukkit.getServer().createBlockData(in);
         } catch (IllegalArgumentException iae) {
