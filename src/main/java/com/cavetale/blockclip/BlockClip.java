@@ -88,6 +88,9 @@ public final class BlockClip {
 
     private static BlockData parseBlockData(String in) {
         if (in.equals("grass_path")) return Material.DIRT_PATH.createBlockData();
+        if (in.startsWith("cauldron[")) {
+            in = "water_" + in;
+        }
         try {
             return Bukkit.getServer().createBlockData(in);
         } catch (IllegalArgumentException iae) {
