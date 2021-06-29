@@ -88,6 +88,7 @@ public final class BlockClip {
 
     private static BlockData parseBlockData(String in) {
         if (in.equals("grass_path")) return Material.DIRT_PATH.createBlockData();
+        if (in.equals("cauldron[level=0]")) return Material.CAULDRON.createBlockData();
         if (in.startsWith("cauldron[")) {
             in = "water_" + in;
         }
