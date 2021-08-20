@@ -76,7 +76,7 @@
     <!-- Dirty -->
     <dependency>
       <groupId>com.cavetale.dirty</groupId>
-      <artifactId>dirty</artifactId>
+      <artifactId>stub</artifactId>
       <version>0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
