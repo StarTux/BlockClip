@@ -12,19 +12,14 @@
   <build>
     <finalName>${project.name}</finalName>
     <plugins>
-      <!-- Surefire for Testing -->
-      <plugin>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.22.0</version>
-      </plugin>
-      <!-- Java 8 -->
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.2</version>
         <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
+          <source>16</source>
+          <target>16</target>
           <showDeprecation>true</showDeprecation>
           <showWarnings>true</showWarnings>
           <compilerArgs>
@@ -32,6 +27,7 @@
           </compilerArgs>
         </configuration>
       </plugin>
+
     </plugins>
   </build>
   <repositories>
@@ -61,7 +57,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.17-R0.1-SNAPSHOT</version>
+      <version>1.17.1-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
 
@@ -85,7 +81,8 @@
     <dependency>
       <groupId>com.sk89q.worldedit</groupId>
       <artifactId>worldedit-bukkit</artifactId>
-      <version>7.2.0-SNAPSHOT</version>
+      <version>7.3.0-SNAPSHOT</version>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>

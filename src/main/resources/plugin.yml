@@ -1,13 +1,18 @@
 main: com.cavetale.blockclip.BlockClipPlugin
 name: BlockClip
+
 version: 0.1
-api-version: 1.13
+api-version: 1.17
+
 description: Simple Schematics Plugin
 author: StarTux
 website: https://cavetale.com
+
 depend: [Dirty]
 softdepend: [WorldEdit]
+
 commands:
+
   blockclip:
     aliases: [bclip]
     description: BlockClip user interface
@@ -21,6 +26,8 @@ commands:
       /bclip load <path> - Load file
       /bclip meta <key> <value> - Set clipboard meta
       /bclip info - Clipboard info
+
 permissions:
+
   blockclip.blockclip:
     description: Use /blockclip
