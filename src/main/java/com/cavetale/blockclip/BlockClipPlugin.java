@@ -10,7 +10,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class BlockClipPlugin extends JavaPlugin {
     private static final String METADATA_CLIP = "blockclip.clip";
     private BlockClipCommand blockClipCommand;
-    static BlockClipPlugin instance;
+    protected static BlockClipPlugin instance;
 
     @Override
     public void onEnable() {
@@ -26,15 +26,11 @@ public final class BlockClipPlugin extends JavaPlugin {
         }
     }
 
-    // --- File
-
     File getClipFolder() {
         File folder = new File(getDataFolder(), "clips");
         folder.mkdirs();
         return folder;
     }
-
-    // --- Meta utility
 
     void setClip(Metadatable player, BlockClip clip) {
         player.setMetadata(METADATA_CLIP, new FixedMetadataValue(this, clip));

@@ -5,13 +5,17 @@ import com.google.gson.JsonSyntaxException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -25,7 +29,11 @@ import org.bukkit.scheduler.BukkitRunnable;
 @RequiredArgsConstructor
 final class BlockClipCommand implements TabExecutor {
     private final BlockClipPlugin plugin;
-    private static final List<String> COMMANDS = Arrays.asList("copy", "paste", "show", "list", "save", "load", "meta", "info", "findorigins");
+    private static final List<String> COMMANDS = Arrays.asList("copy", "paste", "show",
+                                                               "list", "save", "load",
+                                                               "meta", "info",
+                                                               "findorigins",
+                                                               "migrate");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
@@ -100,11 +108,6 @@ final class BlockClipCommand implements TabExecutor {
                 particle(player, selection.hi.x + 1, selection.lo.y + 0, z);
                 particle(player, selection.hi.x + 1, selection.hi.y + 1, z);
             }
-            player.spawnParticle(Particle.BARRIER,
-                                 (double) selection.lo.x + 0.5,
-                                 (double) selection.lo.y + 0.5,
-                                 (double) selection.lo.z + 0.5, 1,
-                                 0.0, 0.0, 0.0, 0.0);
             return true;
         }
         case "paste": {
@@ -120,6 +123,9 @@ final class BlockClipCommand implements TabExecutor {
             if (args.length != 0) return false;
             Selection selection = selectionOf(player);
             BlockClip clip = clipOf(player);
+            if (clip.getSerialized() == null) {
+                throw new BlockClipException("Cannot show legacy clips!");
+            }
             World world = player.getWorld();
             clip.show(player, selection.lo.toBlock(world));
             player.sendMessage("Selection previewed at " + selection.lo + ".");
@@ -190,6 +196,7 @@ final class BlockClipCommand implements TabExecutor {
             return true;
         }
         case "findorigins": return findOrigins(player, args);
+        case "migrate": return migrate(player, args);
         default: return false;
         }
     }
@@ -309,7 +316,7 @@ final class BlockClipCommand implements TabExecutor {
                         }
                     }
                     if (foundClip != null) {
-                        foundClip.setOrigin(new BlockClip.Origin(block));
+                        foundClip.setOrigin(new Origin(block));
                         player.sendMessage("Origin found: " + foundClip.getFilename() + ": " + foundClip.getOrigin());
                         foundClip.update();
                         try {
@@ -327,6 +334,47 @@ final class BlockClipCommand implements TabExecutor {
             }
         }.runTaskTimer(plugin, 0L, 1L);
         player.sendMessage("Searching origins of " + clips.size() + " clips within " + selection + "...");
+        return true;
+    }
+
+    protected boolean migrate(Player player, String[] args) {
+        if (args.length != 0) return false;
+        List<BlockClip> clips = new ArrayList<>();
+        Set<String> unloadedWorlds = new HashSet<>();
+        for (File file : plugin.getClipFolder().listFiles()) {
+            if (file.isFile() && file.getName().endsWith(".json")) {
+                BlockClip clip;
+                try {
+                    clip = BlockClip.load(file);
+                } catch (IOException ioe) {
+                    ioe.printStackTrace();
+                    player.sendMessage("Error! See console");
+                    return true;
+                }
+                if (clip.getSerialized() != null) continue;
+                if (clip.getOrigin() == null) continue;
+                String w = clip.getOrigin().getWorld();
+                if (Bukkit.getWorld(w) == null) {
+                    if (!unloadedWorlds.contains(w)) {
+                        unloadedWorlds.add(w);
+                        player.sendMessage("World not loaded: " + w);
+                    }
+                    continue;
+                }
+                clips.add(clip);
+            }
+        }
+        player.sendMessage("Processing " + clips.size() + " clips...");
+        for (BlockClip clip : clips) {
+            Block origin = clip.getOrigin().toBlock();
+            clip.copy(origin);
+            try {
+                clip.save();
+            } catch (IOException ioe) {
+                throw new UncheckedIOException(ioe);
+            }
+        }
+        player.sendMessage("Migrated " + clips.size() + " clips!");
         return true;
     }
 }

@@ -8,8 +8,8 @@ description: Simple Schematics Plugin
 author: StarTux
 website: https://cavetale.com
 
-depend: [Dirty]
-softdepend: [WorldEdit]
+depend: []
+softdepend: [WorldEdit, Dirty]
 
 commands:
 

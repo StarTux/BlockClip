@@ -3,67 +3,55 @@ package com.cavetale.blockclip;
 import com.cavetale.dirty.Dirty;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Base64;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import lombok.Data;
 import lombok.Value;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockState;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.block.structure.Mirror;
+import org.bukkit.block.structure.StructureRotation;
 import org.bukkit.entity.Player;
+import org.bukkit.structure.Palette;
+import org.bukkit.structure.Structure;
 
 @Data
 public final class BlockClip {
     public static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
     public static final Gson PRETTY_GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
     private List<Integer> size = Arrays.asList(0, 0, 0);
-    private List<Object> blocks = new ArrayList<>();
-    private Map<String, Object> metadata = new HashMap<>();
+    // Legacy
+    private List<Object> blocks = null;
+    private Map<String, Object> metadata = null;
+    private transient List<ParsedBlock> parsedCache = null;
+    // Structure
+    private String serialized;
+    // Meta
     private Origin origin;
     private String filename;
-    private transient List<ParsedBlock> parsedCache = null;
+    // Cache
+    private transient Structure structure;
 
-    @FunctionalInterface
-    public interface BlockSetter {
-        boolean accept(Block block, Vec3i vec, BlockData blockData, Map<String, Object> blockTag);
-    }
-
-    @Value
+    @Value @Deprecated
     public static final class ParsedBlock {
         BlockData blockData;
         Map<String, Object> blockTag;
-    }
-
-    @Value
-    public static final class Origin {
-        public final String world;
-        public final int x;
-        public final int y;
-        public final int z;
-
-        public Origin(final Block block) {
-            this.world = block.getWorld().getName();
-            this.x = block.getX();
-            this.y = block.getY();
-            this.z = block.getZ();
-        }
-
-        public Block toBlock() {
-            World w = Bukkit.getWorld(world);
-            if (w == null) return null;
-            return w.getBlockAt(x, y, z);
-        }
     }
 
     public void setSize(int x, int y, int z) {
@@ -86,6 +74,7 @@ public final class BlockClip {
         return GSON.fromJson(json, BlockClip.class);
     }
 
+    @Deprecated
     private static BlockData parseBlockData(String in) {
         if (in.equals("grass_path")) return Material.DIRT_PATH.createBlockData();
         if (in.equals("cauldron[level=0]")) return Material.CAULDRON.createBlockData();
@@ -106,6 +95,7 @@ public final class BlockClip {
         return null;
     }
 
+    @Deprecated
     private static String serializeBlockData(BlockData in) {
         if (in == null) return "air";
         String string = in.getAsString();
@@ -113,7 +103,8 @@ public final class BlockClip {
         return string;
     }
 
-    public void paste(Block offset, BlockSetter setter) {
+    @Deprecated
+    public void pasteLegacy(Block offset) {
         Iterator<ParsedBlock> iter = getParsedCache().iterator();
         for (int y = 0; y < size.get(1); y += 1) {
             for (int z = 0; z < size.get(2); z += 1) {
@@ -130,10 +121,8 @@ public final class BlockClip {
                         blockTag.put("y", block.getY());
                         blockTag.put("z", block.getZ());
                     }
-                    if (setter == null || setter.accept(block, relative, blockData, blockTag)) {
-                        block.setBlockData(blockData, false);
-                        if (blockTag != null) Dirty.setBlockTag(block, blockTag);
-                    }
+                    block.setBlockData(blockData, false);
+                    if (blockTag != null) Dirty.setBlockTag(block, blockTag);
                     if (blockTag != null) {
                         blockTag.remove("x");
                         blockTag.remove("y");
@@ -145,38 +134,50 @@ public final class BlockClip {
     }
 
     public void paste(Block offset) {
-        paste(offset, null);
+        if (serialized == null) {
+            // Legacy
+            pasteLegacy(offset);
+            return;
+        }
+        getStructure().place(offset.getLocation(),
+                             false, // includeEntities
+                             StructureRotation.NONE, Mirror.NONE,
+                             0, // palette
+                             1.0f, // integrity, 1=pristine
+                             ThreadLocalRandom.current());
     }
 
     public void show(Player player, Block offset) {
-        paste(offset, (block, vec, data, tag) -> {
-                player.sendBlockChange(block.getLocation(), data);
-                return false;
-            });
+        if (serialized == null) return;
+        for (Palette palette : getStructure().getPalettes()) {
+            for (BlockState blockState : palette.getBlocks()) {
+                // BlockState locations are stored relative to the Structure origin(?)
+                int x = blockState.getX() + offset.getX();
+                int y = blockState.getY() + offset.getY();
+                int z = blockState.getZ() + offset.getZ();
+                if (!player.getWorld().isChunkLoaded(x >> 4, z >> 4)) continue;
+                player.sendBlockChange(player.getWorld().getBlockAt(x, y, z).getLocation(),
+                                       blockState.getBlockData());
+            }
+        }
     }
 
     public void copy(Block offset) {
-        List<Object> bs = new ArrayList<>();
-        for (int y = 0; y < size.get(1); y += 1) {
-            for (int z = 0; z < size.get(2); z += 1) {
-                for (int x = 0; x < size.get(0); x += 1) {
-                    // Vec3i relativePosition = new Vec3i(x, y, z);
-                    Block block = offset.getRelative(x, y, z);
-                    BlockData blockData = block.getBlockData();
-                    Map<String, Object> blockTag = Dirty.getBlockTag(block);
-                    if (blockTag == null) {
-                        bs.add(serializeBlockData(blockData));
-                    } else {
-                        blockTag.remove("x");
-                        blockTag.remove("y");
-                        blockTag.remove("z");
-                        bs.add(Arrays.asList(serializeBlockData(blockData), blockTag));
-                    }
-                }
-            }
+        this.origin = new Origin(offset);
+        this.structure = Bukkit.getStructureManager().createStructure();
+        structure.fill(offset.getLocation(),
+                       offset.getRelative(size.get(0), size.get(1), size.get(1)).getLocation(),
+                       false);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            Bukkit.getStructureManager().saveStructure(baos, structure);
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
         }
-        blocks = bs;
-        parsedCache = null;
+        this.serialized = Base64.getEncoder().encodeToString(baos.toByteArray());
+        this.blocks = null;
+        this.metadata = null;
+        this.parsedCache = null;
     }
 
     public static BlockClip copyOf(Block ba, Block bb) {
@@ -210,8 +211,12 @@ public final class BlockClip {
     public void save(File file) throws IOException {
         filename = file.getName();
         try (FileWriter writer = new FileWriter(file)) {
-            GSON.toJson(this, writer);
+            PRETTY_GSON.toJson(this, writer);
         }
+    }
+
+    public void save() throws IOException {
+        save(new File(BlockClipPlugin.instance.getClipFolder(), filename));
     }
 
     private List<ParsedBlock> computeParsedCache() {
@@ -331,5 +336,28 @@ public final class BlockClip {
                        ? serializeBlockData(it.blockData)
                        : Arrays.asList(serializeBlockData(it.blockData), it.blockTag));
         }
+    }
+
+    public Structure getStructure() {
+        if (serialized == null) return null;
+        if (structure == null) {
+            byte[] bytes = Base64.getDecoder().decode(serialized);
+            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+            try {
+                this.structure = Bukkit.getStructureManager().loadStructure(bais);
+            } catch (IOException ioe) {
+                throw new UncheckedIOException(ioe);
+            }
+        }
+        return structure;
+    }
+
+    public List<BlockState> getBlockStates() {
+        if (structure == null && serialized == null) return List.of();
+        List<BlockState> result = new ArrayList<>();
+        for (Palette palette : getStructure().getPalettes()) {
+            result.addAll(palette.getBlocks());
+        }
+        return result;
     }
 }
