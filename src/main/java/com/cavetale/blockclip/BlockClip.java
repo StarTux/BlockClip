@@ -38,13 +38,13 @@ public final class BlockClip {
     private List<Integer> size = Arrays.asList(0, 0, 0);
     // Legacy
     private List<Object> blocks = null;
-    private Map<String, Object> metadata = null;
     private transient List<ParsedBlock> parsedCache = null;
     // Structure
     private String serialized;
     // Meta
     private Origin origin;
     private String filename;
+    private Map<String, Object> metadata = null;
     // Cache
     private transient Structure structure;
 
@@ -176,7 +176,6 @@ public final class BlockClip {
         }
         this.serialized = Base64.getEncoder().encodeToString(baos.toByteArray());
         this.blocks = null;
-        this.metadata = null;
         this.parsedCache = null;
     }
 
@@ -359,5 +358,17 @@ public final class BlockClip {
             result.addAll(palette.getBlocks());
         }
         return result;
+    }
+
+    public int getSizeX() {
+        return size.get(0);
+    }
+
+    public int getSizeY() {
+        return size.get(1);
+    }
+
+    public int getSizeZ() {
+        return size.get(2);
     }
 }

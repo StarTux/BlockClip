@@ -21,7 +21,7 @@ public final class BlockClipPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        for (Player player: getServer().getOnlinePlayers()) {
+        for (Player player : getServer().getOnlinePlayers()) {
             player.removeMetadata(METADATA_CLIP, this);
         }
     }
@@ -37,7 +37,7 @@ public final class BlockClipPlugin extends JavaPlugin {
     }
 
     BlockClip getClip(Metadatable player) {
-        for (MetadataValue mv: player.getMetadata(METADATA_CLIP)) {
+        for (MetadataValue mv : player.getMetadata(METADATA_CLIP)) {
             if (mv.getOwningPlugin() == this) {
                 return (BlockClip) mv.value();
             }
