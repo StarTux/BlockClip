@@ -145,7 +145,7 @@ public final class BlockClip {
         this.origin = new Origin(offset);
         this.structure = Bukkit.getStructureManager().createStructure();
         structure.fill(offset.getLocation(),
-                       offset.getRelative(size.get(0), size.get(1), size.get(1)).getLocation(),
+                       offset.getRelative(getSizeX(), getSizeY(), getSizeZ()).getLocation(),
                        false);
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
