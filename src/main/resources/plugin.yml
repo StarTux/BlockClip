@@ -9,7 +9,7 @@ author: StarTux
 website: https://cavetale.com
 
 depend: []
-softdepend: [WorldEdit, Dirty]
+softdepend: [WorldEdit]
 
 commands:
 

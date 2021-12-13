@@ -1,6 +1,5 @@
 package com.cavetale.blockclip;
 
-import com.cavetale.dirty.Dirty;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.ByteArrayInputStream;
@@ -19,7 +18,6 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 import lombok.Data;
-import lombok.Value;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -38,7 +36,7 @@ public final class BlockClip {
     private List<Integer> size = Arrays.asList(0, 0, 0);
     // Legacy
     private List<Object> blocks = null;
-    private transient List<ParsedBlock> parsedCache = null;
+    private transient List<BlockData> blockDataCache = null;
     // Structure
     private String serialized;
     // Meta
@@ -47,12 +45,6 @@ public final class BlockClip {
     private Map<String, Object> metadata = null;
     // Cache
     private transient Structure structure;
-
-    @Value @Deprecated
-    public static final class ParsedBlock {
-        BlockData blockData;
-        Map<String, Object> blockTag;
-    }
 
     public void setSize(int x, int y, int z) {
         size = Arrays.asList(x, y, z);
@@ -105,29 +97,16 @@ public final class BlockClip {
 
     @Deprecated
     public void pasteLegacy(Block offset) {
-        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        Iterator<BlockData> iter = getBlockDataCache().iterator();
         for (int y = 0; y < size.get(1); y += 1) {
             for (int z = 0; z < size.get(2); z += 1) {
                 for (int x = 0; x < size.get(0); x += 1) {
                     if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
-                    ParsedBlock it = iter.next();
-                    if (it.blockData == null) continue;
+                    BlockData blockData = iter.next();
+                    if (blockData == null) continue;
                     Block block = offset.getRelative(x, y, z);
                     Vec3i relative = new Vec3i(x, y, z);
-                    BlockData blockData = it.blockData.clone();
-                    Map<String, Object> blockTag = it.blockTag; // careful: not a copy!
-                    if (blockTag != null) {
-                        blockTag.put("x", block.getX());
-                        blockTag.put("y", block.getY());
-                        blockTag.put("z", block.getZ());
-                    }
                     block.setBlockData(blockData, false);
-                    if (blockTag != null) Dirty.setBlockTag(block, blockTag);
-                    if (blockTag != null) {
-                        blockTag.remove("x");
-                        blockTag.remove("y");
-                        blockTag.remove("z");
-                    }
                 }
             }
         }
@@ -176,7 +155,7 @@ public final class BlockClip {
         }
         this.serialized = Base64.getEncoder().encodeToString(baos.toByteArray());
         this.blocks = null;
-        this.parsedCache = null;
+        this.blockDataCache = null;
     }
 
     public static BlockClip copyOf(Block ba, Block bb) {
@@ -218,8 +197,8 @@ public final class BlockClip {
         save(new File(BlockClipPlugin.instance.getClipFolder(), filename));
     }
 
-    private List<ParsedBlock> computeParsedCache() {
-        List<ParsedBlock> result = new ArrayList<>(blocks.size());
+    private List<BlockData> computeBlockDataCache() {
+        List<BlockData> result = new ArrayList<>(blocks.size());
         Iterator<Object> iter = blocks.iterator();
         for (int y = 0; y < size.get(1); y += 1) {
             for (int z = 0; z < size.get(2); z += 1) {
@@ -227,50 +206,44 @@ public final class BlockClip {
                     if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
                     Object b = iter.next();
                     final BlockData blockData;
-                    final Map<String, Object> blockTag;
                     Vec3i relativePosition = new Vec3i(x, y, z);
                     if (b instanceof String) {
                         blockData = parseBlockData((String) b);
-                        blockTag = null;
                     } else if (b instanceof List) {
-                        @SuppressWarnings("unchecked")
-                            List<Object> list = (List<Object>) b;
-                        if (list.size() != 2 || !(list.get(0) instanceof String) || !(list.get(1) instanceof Map)) {
+                        @SuppressWarnings("unchecked") List<Object> list = (List<Object>) b;
+                        if (list.isEmpty() || !(list.get(0) instanceof String)) {
                             throw new IllegalArgumentException("Invalid list entry at " + relativePosition + ": " + list);
                         }
                         blockData = parseBlockData((String) list.get(0));
-                        @SuppressWarnings("unchecked")
-                            Map<String, Object> map = (Map<String, Object>) list.get(1);
-                        blockTag = map;
                     } else {
                         throw new IllegalArgumentException("Unknown block entry at " + relativePosition + ": " + b.getClass().getName());
                     }
-                    result.add(new ParsedBlock(blockData, blockTag));
+                    result.add(blockData);
                 }
             }
         }
         return result;
     }
 
-    public List<ParsedBlock> getParsedCache() {
-        if (parsedCache == null) {
-            parsedCache = computeParsedCache();
+    public List<BlockData> getBlockDataCache() {
+        if (blockDataCache == null) {
+            blockDataCache = computeBlockDataCache();
         }
-        return parsedCache;
+        return blockDataCache;
     }
 
     public boolean isOrigin(Block offset) {
-        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        Iterator<BlockData> iter = getBlockDataCache().iterator();
         for (int y = 0; y < size.get(1); y += 1) {
             for (int z = 0; z < size.get(2); z += 1) {
                 for (int x = 0; x < size.get(0); x += 1) {
                     if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
-                    ParsedBlock it = iter.next();
+                    BlockData blockData = iter.next();
                     Block block = offset.getRelative(x, y, z);
-                    if (it.blockData == null) {
+                    if (blockData == null) {
                         if (!block.isEmpty()) return false;
                     } else {
-                        if (it.blockData.getMaterial() != block.getType()) {
+                        if (blockData.getMaterial() != block.getType()) {
                             return false;
                         }
                     }
@@ -281,7 +254,7 @@ public final class BlockClip {
     }
 
     public double originAccuracy(Block offset) {
-        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        Iterator<BlockData> iter = getBlockDataCache().iterator();
         int hits = 0;
         int count = 0;
         for (int y = 0; y < size.get(1); y += 1) {
@@ -289,12 +262,12 @@ public final class BlockClip {
                 for (int x = 0; x < size.get(0); x += 1) {
                     count += 1;
                     if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
-                    ParsedBlock it = iter.next();
+                    BlockData blockData = iter.next();
                     Block block = offset.getRelative(x, y, z);
-                    if (it.blockData == null) {
+                    if (blockData == null) {
                         if (block.isEmpty()) hits += 1;
                     } else {
-                        if (it.blockData.getMaterial() == block.getType()) {
+                        if (blockData.getMaterial() == block.getType()) {
                             hits += 1;
                         }
                     }
@@ -305,20 +278,20 @@ public final class BlockClip {
     }
 
     public void printDifferences(Block offset, Player player) {
-        Iterator<ParsedBlock> iter = getParsedCache().iterator();
+        Iterator<BlockData> iter = getBlockDataCache().iterator();
         for (int y = 0; y < size.get(1); y += 1) {
             for (int z = 0; z < size.get(2); z += 1) {
                 for (int x = 0; x < size.get(0); x += 1) {
                     if (!iter.hasNext()) throw new IllegalStateException("Size does not match block array length!");
-                    ParsedBlock it = iter.next();
+                    BlockData blockData = iter.next();
                     Block block = offset.getRelative(x, y, z);
-                    if (it.blockData == null) {
+                    if (blockData == null) {
                         if (!block.isEmpty()) {
                             player.sendMessage(Vec3i.of(block) + ": AIR vs " + block.getType());
                         }
                     } else {
-                        if (it.blockData.getMaterial() != block.getType()) {
-                            player.sendMessage(Vec3i.of(block) + ": " + it.blockData.getMaterial() + " vs " + block.getType());
+                        if (blockData.getMaterial() != block.getType()) {
+                            player.sendMessage(Vec3i.of(block) + ": " + blockData.getMaterial() + " vs " + block.getType());
                         }
                     }
                 }
@@ -327,13 +300,11 @@ public final class BlockClip {
     }
 
     public void update() {
-        List<ParsedBlock> parsed = getParsedCache();
-        if (parsed.size() != blocks.size()) throw new IllegalStateException("Size does not match block array length!");
-        for (int i = 0; i < parsed.size(); i += 1) {
-            ParsedBlock it = parsed.get(i);
-            blocks.set(i, it.blockTag == null
-                       ? serializeBlockData(it.blockData)
-                       : Arrays.asList(serializeBlockData(it.blockData), it.blockTag));
+        List<BlockData> blockDataList = getBlockDataCache();
+        if (blockDataList.size() != blocks.size()) throw new IllegalStateException("Size does not match block array length!");
+        for (int i = 0; i < blockDataList.size(); i += 1) {
+            BlockData blockData = blockDataList.get(i);
+            blocks.set(i, serializeBlockData(blockData));
         }
     }
 
