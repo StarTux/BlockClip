@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -25,6 +24,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.RED;
 
 @RequiredArgsConstructor
 final class BlockClipCommand implements TabExecutor {
@@ -46,7 +47,7 @@ final class BlockClipCommand implements TabExecutor {
         try {
             return onCommand(player, args[0], Arrays.copyOfRange(args, 1, args.length));
         } catch (BlockClipException bce) {
-            player.sendMessage(ChatColor.RED + bce.getMessage());
+            player.sendMessage(text(bce.getMessage(), RED));
             return true;
         }
     }
