@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -179,6 +180,9 @@ final class BlockClipCommand implements TabExecutor {
             if (args.length < 1) return false;
             BlockClip clip = clipOf(player);
             String key = args[0];
+            if (clip.getMetadata() == null) {
+                clip.setMetadata(new HashMap<>());
+            }
             if (args.length >= 2) {
                 Object value = jsonOf(Arrays.copyOfRange(args, 1, args.length));
                 clip.getMetadata().put(key, value);
