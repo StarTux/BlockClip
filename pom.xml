@@ -47,7 +47,7 @@
     <!-- WorldEdit Repo -->
     <repository>
       <id>worldedit</id>
-      <url>http://maven.enginehub.org/repo/</url>
+      <url>https://maven.enginehub.org/repo/</url>
     </repository>
 
   </repositories>
@@ -57,7 +57,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.21.4-R0.1-SNAPSHOT</version> <!-- Paper Version -->
+      <version>1.21.6-R0.1-SNAPSHOT</version> <!-- Paper Version -->
       <scope>provided</scope>
     </dependency>
 
