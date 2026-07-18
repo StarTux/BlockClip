@@ -21,7 +21,7 @@ commands:
       /bclip copy - Copy to clipboard
       /bclip paste - Paste clipboard
       /bclip show - Preview clipboard
-      /blcip list [pattern] - List clip files
+      /bclip list [pattern] - List clip files
       /bclip save <path> - Save to file
       /bclip load <path> - Load file
       /bclip meta <key> <value> - Set clipboard meta
